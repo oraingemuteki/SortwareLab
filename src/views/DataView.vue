@@ -9,15 +9,6 @@
           <p>详细记录 · 精准分析 · 竞技提升</p>
         </div>
       </div>
-<!--      <div class="user-area">-->
-<!--        <div class="user-info">-->
-<!--          <h3>玩家: {{ username }}</h3>-->
-<!--          <p>最近登录: {{ lastLogin }}</p>-->
-<!--        </div>-->
-<!--        <div class="user-avatar">-->
-<!--          {{ avatarInitials }}-->
-<!--        </div>-->
-<!--      </div>-->
 
       <el-button class="back-button" type="primary" circle @click="goToMain">
         <el-icon><ArrowLeft /></el-icon>
@@ -40,24 +31,6 @@
         />
       </div>
 
-      <div class="filter-group">
-        <label>游戏结果:</label>
-        <el-select v-model="resultFilter" placeholder="全部结果" size="large" @change="fetchData">
-          <el-option label="全部" value="all" />
-          <el-option label="胜利" value="win" />
-          <el-option label="失败" value="loss" />
-        </el-select>
-      </div>
-
-      <div class="filter-group">
-        <label>自动锁敌:</label>
-        <el-select v-model="autoAimFilter" placeholder="全部状态" size="large" @change="fetchData">
-          <el-option label="全部" value="all" />
-          <el-option label="开启" value="on" />
-          <el-option label="关闭" value="off" />
-        </el-select>
-      </div>
-
       <el-button type="primary" size="large" @click="fetchData" :loading="isLoading">
         <el-icon><Refresh /></el-icon>
         刷新数据
@@ -75,38 +48,38 @@
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">🏆</div>
+        <div class="stat-icon">⏱️️</div>
         <div class="stat-content">
-          <h3>胜率</h3>
-          <p>{{ summary.winRate }}%</p>
+          <h3>平均时长</h3>
+          <p>{{ summary.avgDuration }} 分钟</p>
         </div>
       </div>
 
       <div class="stat-card">
         <div class="stat-icon">🎯</div>
         <div class="stat-content">
-          <h3>平均命中率</h3>
-          <p>{{ summary.avgAccuracy }}%</p>
+          <h3>平均击杀数</h3>
+          <p>{{ summary.avgKills }}</p>
         </div>
       </div>
 
       <div class="stat-card">
-        <div class="stat-icon">💀</div>
+        <div class="stat-icon">🧊</div>
         <div class="stat-content">
-          <h3>平均死亡次数</h3>
-          <p>{{ summary.avgDeaths }}</p>
+          <h3>平均立方体数</h3>
+          <p>{{ summary.avgCubes }}</p>
         </div>
       </div>
     </div>
 
     <!-- 数据加载状态 -->
-    <div v-if="isLoading && gameData.length === 0" class="loading-container">
+    <div v-if="isLoading && allGameData.length === 0" class="loading-container">
       <el-icon class="loading-icon"><Loading /></el-icon>
       <p>正在加载游戏数据...</p>
     </div>
 
     <!-- 无数据提示 -->
-    <div v-else-if="gameData.length === 0" class="no-data">
+    <div v-else-if="allGameData.length === 0" class="no-data">
       <el-icon><DataBoard /></el-icon>
       <p>暂无游戏数据</p>
     </div>
@@ -114,47 +87,18 @@
     <!-- 数据表格 -->
     <div v-else class="data-table-container">
       <el-table
-          :data="gameData"
+          :data="paginatedGameData"
           stripe
           style="width: 100%"
           v-loading="isLoading"
           element-loading-text="数据加载中..."
+          @sort-change="handleSortChange"
       >
-        <el-table-column prop="gameId" label="游戏ID" width="120" sortable />
-        <el-table-column prop="date" label="日期" width="150" sortable />
-        <el-table-column prop="map" label="地图" width="150" />
-        <el-table-column label="结果" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.result === '胜利' ? 'success' : 'danger'">
-              {{ scope.row.result }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column prop="accuracy" label="命中率" width="120">
-          <template #default="scope">
-            <el-progress
-                :percentage="scope.row.accuracy"
-                :color="accuracyColor(scope.row.accuracy)"
-                :show-text="false"
-            />
-            <span>{{ scope.row.accuracy }}%</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="kills" label="击杀数" width="120" sortable />
-        <el-table-column prop="deaths" label="死亡数" width="120" sortable />
-        <el-table-column prop="kdRatio" label="K/D比率" width="120" sortable />
-        <el-table-column label="自动锁敌" width="120">
-          <template #default="scope">
-            <el-tag :type="scope.row.autoAim ? 'success' : 'info'">
-              {{ scope.row.autoAim ? '开启' : '关闭' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="详情" width="120">
-          <template #default="scope">
-            <el-button size="small" @click="viewDetails(scope.row)">查看详情</el-button>
-          </template>
-        </el-table-column>
+        <el-table-column prop="timestamp" label="时间" width="300" sortable="custom" />
+        <el-table-column prop="scoreNum" label="分数" width="300" sortable="custom" />
+        <el-table-column prop="time" label="时长" width="300" />
+        <el-table-column prop="killsNum" label="击杀数" width="300" sortable="custom" />
+        <el-table-column prop="cubesNum" label="立方体数" width="300" sortable="custom" />
       </el-table>
 
       <!-- 分页控件 -->
@@ -169,23 +113,9 @@
         />
       </div>
     </div>
-
-    <!-- 数据可视化图表 -->
-    <div v-if="gameData.length > 0" class="charts-container">
-      <div class="chart-card">
-        <h3>胜率趋势</h3>
-        <div ref="winRateChart" style="height: 300px;"></div>
-      </div>
-
-      <div class="chart-card">
-        <h3>命中率分布</h3>
-        <div ref="accuracyChart" style="height: 300px;"></div>
-      </div>
-    </div>
-
     <!-- 页脚 -->
     <div class="footer">
-      <p>© 2023 FPS游戏智能系统 | 数据统计模块 v1.5.2 | 更新时间: {{ lastUpdate }}</p>
+      <p>© 2025 FPS游戏智能系统 | 游戏数据模块 | 更新时间: {{ lastUpdate }}</p>
     </div>
   </div>
 </template>
@@ -201,9 +131,7 @@ import {ArrowLeft} from "@element-plus/icons-vue";
 const route = useRoute();
 const router = useRouter();
 const username = ref(route.params.username || '未知用户');
-const lastLogin = ref('2023-10-18 14:30');
-const lastUpdate = ref('2023-10-18 15:45');
-const avatarInitials = ref(username.value.slice(0, 2).toUpperCase());
+const lastUpdate = ref('2025-06-16');
 
 // 数据加载状态
 const isLoading = ref(false);
@@ -218,6 +146,15 @@ const currentPage = ref(1);
 const pageSize = ref(10);
 const totalRecords = ref(0);
 
+// 存储所有游戏数据
+const allGameData = ref([]);
+// 当前页数据
+const paginatedGameData = ref([]);
+
+// 排序相关状态
+const sortColumn = ref(null); // 当前排序列
+const sortDirection = ref('asc'); // 排序方向：'asc' 或 'desc'
+
 const goToMain = () => {
   router.push(`/${username.value}/main`);
 };
@@ -225,13 +162,17 @@ const goToMain = () => {
 // 数据概览
 const summary = ref({
   totalGames: 0,
-  winRate: 0,
-  avgAccuracy: 0,
-  avgDeaths: 0
+  avgDuration: 0,
+  avgKills: 0,
+  avgCubes: 0
 });
 
-// 游戏数据
-const gameData = ref([]);
+// 更新分页数据
+const updatePaginatedData = () => {
+  const start = (currentPage.value - 1) * pageSize.value;
+  const end = start + pageSize.value;
+  paginatedGameData.value = allGameData.value.slice(start, end);
+};
 
 // 计算命中率颜色
 const accuracyColor = (accuracy) => {
@@ -374,22 +315,72 @@ const initCharts = () => {
 // 计算数据概览
 const calculateSummary = (data) => {
   const total = data.length;
-  const wins = data.filter(item => item.result === '胜利').length;
-  const totalAccuracy = data.reduce((sum, item) => sum + item.accuracy, 0);
-  const totalDeaths = data.reduce((sum, item) => sum + item.deaths, 0);
+
+  // 计算总时长（分钟）
+  const totalDuration = data.reduce((sum, item) => {
+    // 将时间字符串转换为分钟数
+    // 格式为 "10:30" -> 10.5分钟
+    const [minutes, seconds] = item.time.split(':').map(Number);
+    return sum + minutes + (seconds / 60);
+  }, 0);
+
+  // 计算总击杀数
+  const totalKills = data.reduce((sum, item) => sum + parseFloat(item.kills || 0), 0);
+
+  // 计算总立方体数
+  const totalCubes = data.reduce((sum, item) => sum + parseFloat(item.cubes || 0), 0);
 
   summary.value = {
     totalGames: total,
-    winRate: total > 0 ? Math.round((wins / total) * 100) : 0,
-    avgAccuracy: total > 0 ? Math.round(totalAccuracy / total) : 0,
-    avgDeaths: total > 0 ? Math.round(totalDeaths / total) : 0
+    avgDuration: total > 0 ? (totalDuration / total).toFixed(1) : 0,
+    avgKills: total > 0 ? (totalKills / total).toFixed(1) : 0,
+    avgCubes: total > 0 ? (totalCubes / total).toFixed(1) : 0
   };
 };
 
 // 处理分页变化
 const handlePageChange = (newPage) => {
   currentPage.value = newPage;
-  fetchData();
+  updatePaginatedData();
+};
+
+// 修改表格排序事件处理函数
+const handleSortChange = ({ prop, order }) => {
+  sortColumn.value = prop;
+  sortDirection.value = order === 'ascending' ? 'asc' : 'desc';
+
+  // 对整个数据集排序
+  sortAllGameData();
+
+  // 更新当前页数据
+  updatePaginatedData();
+};
+
+// 对整个数据集进行排序的函数
+const sortAllGameData = () => {
+  if (!sortColumn.value) return;
+
+  allGameData.value.sort((a, b) => {
+    const valA = a[sortColumn.value];
+    const valB = b[sortColumn.value];
+
+    // 数字类型特殊处理
+    if (typeof valA === 'number' && typeof valB === 'number') {
+      return sortDirection.value === 'asc' ? valA - valB : valB - valA;
+    }
+
+    // 字符串类型处理
+    if (typeof valA === 'string' && typeof valB === 'string') {
+      return sortDirection.value === 'asc'
+          ? valA.localeCompare(valB)
+          : valB.localeCompare(valA);
+    }
+
+    // 其他类型默认按原始值比较
+    return sortDirection.value === 'asc'
+        ? valA - valB
+        : valB - valA;
+  });
 };
 
 // 从后端获取数据
@@ -397,11 +388,10 @@ const fetchData = async () => {
   try {
     isLoading.value = true;
 
-    // 构建查询参数
+    // 构建查询参数 (不需要分页参数)
     const params = {
       username: username.value,
       page: currentPage.value,
-      pageSize: pageSize.value,
       result: resultFilter.value !== 'all' ? resultFilter.value : undefined,
       autoAim: autoAimFilter.value !== 'all' ? (autoAimFilter.value === 'on') : undefined,
     };
@@ -412,28 +402,62 @@ const fetchData = async () => {
       params.endDate = dateRange.value[1];
     }
 
-    // 调用后端API获取数据
-    const response = await axios.get('http://127.0.0.1:5000/api/game-data/${username.value}', { params });
+    // 调用后端API获取所有数据
+    const response = await axios.get(`http://127.0.0.1:5000/api/game-data/${username.value}`, { params });
+    const responseData = response.data;
 
-    if (response.data.success) {
-      gameData.value = response.data.records;
-      totalRecords.value = response.data.totalRecords;
+    if (responseData.success) {
+      // 保存所有数据
+      allGameData.value = responseData.records.map(item => ({
+        timestamp: item.timestamp,
+        score: item.score,
+        time: item.time,
+        kills: item.kills,
+        cubes: item.cubes,
+
+        scoreNum: parseFloat(item.score) || 0,
+        killsNum: parseFloat(item.kills) || 0,
+        cubesNum: parseFloat(item.cubes) || 0
+      }));
+
+      if (dateRange.value && dateRange.value.length === 2) {
+        const startDate = new Date(dateRange.value[0]);
+        const endDate = new Date(dateRange.value[1]);
+        endDate.setDate(endDate.getDate() + 1); // 包含结束日期的整天
+
+        allGameData.value = allGameData.value.filter(item => {
+          const itemDate = new Date(item.timestamp);
+          return itemDate >= startDate && itemDate < endDate;
+        });
+      }
+
+      if (sortColumn.value) {
+        sortAllGameData();
+      }
+
+      // 更新总记录数
+      totalRecords.value = allGameData.value.length;
+
+      // 更新当前页数据
+      updatePaginatedData();
+
+      currentPage.value = 1;
 
       // 计算数据概览
-      calculateSummary(response.data.records);
+      calculateSummary(allGameData.value);
 
+      // 使用await nextTick确保DOM更新完成
+      await nextTick();
       // 初始化图表
-      nextTick(() => {
-        initCharts();
-      });
+      initCharts();
 
       ElMessage.success('数据加载成功');
     } else {
-      ElMessage.error('数据加载失败: ' + response.data.message);
+      ElMessage.error('数据加载失败: ' + responseData.message);
     }
   } catch (error) {
     console.error('获取游戏数据失败:', error);
-    ElMessage.error('服务器连接失败，请稍后重试');
+    // ElMessage.error('服务器连接失败，请稍后重试');
   } finally {
     isLoading.value = false;
   }

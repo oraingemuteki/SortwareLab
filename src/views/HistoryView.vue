@@ -44,6 +44,11 @@
             浏览文件夹
           </el-button>
         </div>
+        <div class="browser-warning" v-if="!isFileSystemSupported">
+          <el-alert title="浏览器兼容提示" type="warning" show-icon>
+            您的浏览器不支持文件路径选择功能，下载将使用默认路径
+          </el-alert>
+        </div>
         <p class="path-hint">当前路径: {{ currentPath }}</p>
       </div>
 
@@ -114,21 +119,21 @@
             </p>
             <p class="recording-duration">
               <el-icon><Timer /></el-icon>
-              时长: {{ recording.duration }} 分钟
+              时长: {{ Number(recording.duration).toFixed(2) }} 分钟
             </p>
             <p class="recording-map">
               <el-icon><MapLocation /></el-icon>
               地图: {{ recording.map }}
             </p>
             <div class="recording-actions">
-              <el-button type="primary" text @click="playRecording(recording)">
-                <el-icon><VideoPlay /></el-icon>
-                播放
+              <el-button type="info" text @click="downloadRecording(recording)">
+                <el-icon><Download /></el-icon>
+                下载
               </el-button>
-              <el-button type="info" text @click="openFolder(recording)">
-                <el-icon><FolderOpened /></el-icon>
-                打开位置
-              </el-button>
+<!--              <el-button type="warning" text @click="openFolder(recording)">-->
+<!--                <el-icon><FolderOpened /></el-icon>-->
+<!--                打开位置-->
+<!--              </el-button>-->
               <el-button type="danger" text @click="deleteRecording(recording)">
                 <el-icon><Delete /></el-icon>
                 删除
@@ -160,10 +165,17 @@
           </div>
         </div>
         <div class="video-container">
-          <div class="video-placeholder">
-            <el-icon class="play-icon"><VideoPlay /></el-icon>
-            <p>正在播放: {{ currentRecording.title }}</p>
-          </div>
+<!--          <div class="video-placeholder">-->
+<!--            <el-icon class="play-icon"><VideoPlay /></el-icon>-->
+<!--            <p>正在播放: {{ currentRecording.title }}</p>-->
+<!--          </div>-->
+          <!-- 替换原有的video-placeholder -->
+          <video
+              controls
+              autoplay
+              :src="currentRecording.path"
+              style="width: 100%; height: 100%">
+          </video>
           <div class="playback-controls">
             <el-slider v-model="playbackProgress" :step="1" />
             <div class="time-display">
@@ -191,7 +203,7 @@
 
     <!-- 页脚 -->
     <div class="footer">
-      <p>© 2023 FPS游戏智能系统 | 历史回放模块 v2.3.1 | 存储空间: {{ storageSpace }}</p>
+      <p>© 2025 FPS游戏智能系统 | 历史回放模块 </p>
     </div>
   </div>
 </template>
@@ -203,10 +215,16 @@ import {
   Clock, Timer, MapLocation, VideoPlay,
   Check, FolderAdd, FullScreen, Close,
   RefreshLeft, RefreshRight, Delete,
-  DocumentDelete, VideoPause, ArrowLeft
+  DocumentDelete, VideoPause, ArrowLeft, Download
 } from '@element-plus/icons-vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import {useRoute, useRouter} from 'vue-router';
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:5000/api/history', // 后端API地址
+  timeout: 10000
+});
 
 const route = useRoute();
 const router = useRouter();
@@ -214,8 +232,10 @@ const username = ref(route.params.username || '游戏玩家');
 
 // 路径设置
 const storagePath = ref('');
-const currentPath = ref('/Users/GamePlayer/Documents/GameReplays');
+const currentPath = ref('F:\\records');
 const isPathSaved = ref(false);
+
+const isFileSystemSupported = ref('showSaveFilePicker' in window);
 
 // 录制控制
 const isRecordingEnabled = ref(false);
@@ -225,45 +245,15 @@ const recordingStatusText = computed(() => {
   return isRecording.value ? '正在录制...' : '准备录制';
 });
 
+// 添加文件夹句柄引用
+const folderHandle = ref(null);
+
 const goToMain = () => {
   router.push(`/${username.value}/main`);
 };
 
 // 回放列表
-const recordings = ref([
-  {
-    id: 1,
-    title: '荒漠迷城 5杀精彩时刻',
-    date: '2023-10-18T14:25:00',
-    duration: 8.5,
-    map: '荒漠迷城',
-    path: '/replays/replay001.mp4'
-  },
-  {
-    id: 2,
-    title: '炼狱小镇 最终回合',
-    date: '2023-10-17T22:15:00',
-    duration: 12.2,
-    map: '炼狱小镇',
-    path: '/replays/replay002.mp4'
-  },
-  {
-    id: 3,
-    title: '殒命大厦 ACE瞬间',
-    date: '2023-10-16T19:45:00',
-    duration: 6.3,
-    map: '殒命大厦',
-    path: '/replays/replay003.mp4'
-  },
-  {
-    id: 4,
-    title: '死亡游乐园 1v5残局',
-    date: '2023-10-15T20:30:00',
-    duration: 10.1,
-    map: '死亡游乐园',
-    path: '/replays/replay004.mp4'
-  }
-]);
+const recordings = ref([]);
 
 // 播放器状态
 const playerVisible = ref(false);
@@ -272,13 +262,6 @@ const currentRecording = ref(null);
 const playbackProgress = ref(30);
 const currentTime = ref(125);
 const totalTime = ref(412);
-
-// 存储空间
-const storageSpace = computed(() => {
-  const total = 50; // GB
-  const used = 12.7; // GB
-  return `${used.toFixed(1)}GB / ${total}GB (${Math.round((used/total)*100)}%)`;
-});
 
 // 格式化日期
 const formatDate = (dateString) => {
@@ -299,26 +282,57 @@ const formatTime = (seconds) => {
   return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
 };
 
-// 保存路径
-const savePath = () => {
+// 在设置路径时验证权限
+const savePath = async () => {
   if (!storagePath.value) {
     ElMessage.warning('请输入存储路径');
     return;
   }
 
-  // 模拟保存到后端
-  setTimeout(() => {
+  // 尝试获取目录权限
+  try {
+    const handle = await window.showDirectoryPicker({
+      startIn: storagePath.value
+    });
+
+    // 验证写权限
+    await handle.requestPermission({ mode: 'readwrite' });
+
     currentPath.value = storagePath.value;
     isPathSaved.value = true;
     ElMessage.success('存储路径已更新');
-  }, 500);
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      ElMessage.error('路径设置失败: ' + error.message);
+    }
+  }
 };
 
 // 浏览文件夹
-const browsePath = () => {
-  // 在实际应用中，这里会调用系统文件选择对话框
-  ElMessage.info('浏览文件夹功能需要桌面应用支持');
-  storagePath.value = '/Users/GamePlayer/Documents/GameReplays';
+const browsePath = async () => {
+  if (!isFileSystemSupported.value) {
+    ElMessage.info('浏览文件夹功能需要桌面应用支持');
+    storagePath.value = 'F:\\records';
+    return;
+  }
+
+  try {
+    // 请求用户选择文件夹
+    folderHandle.value = await window.showDirectoryPicker();
+
+    // 获取文件夹路径（安全沙箱环境只能获取名称）
+    const folderName = folderHandle.value.name;
+    storagePath.value = folderName;
+    currentPath.value = `用户选择的文件夹: ${folderName}`;
+
+    ElMessage.success(`已选择文件夹: ${folderName}`);
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      ElMessage.error('选择文件夹失败: ' + error.message);
+    } else {
+      ElMessage.info('已取消选择文件夹');
+    }
+  }
 };
 
 // 切换录制功能
@@ -334,31 +348,85 @@ const toggleRecording = (enabled) => {
   }
 };
 
-// 切换录制状态
-const toggleRecordingStatus = () => {
-  isRecording.value = !isRecording.value;
+const downloadRecording = async (recording) => {
+  try {
+    const response = await api.get(recording.path, {
+      responseType: 'blob'
+    });
 
-  if (isRecording.value) {
-    ElMessage.success('开始录制游戏回放');
-    // 模拟添加新录制
-    setTimeout(() => {
+    // 使用已保存的文件夹句柄
+    if (folderHandle.value) {
+      const fileHandle = await folderHandle.value.getFileHandle(
+          `record_${recording.id}.mp4`,
+          { create: true }
+      );
+      const writable = await fileHandle.createWritable();
+      await writable.write(response.data);
+      await writable.close();
+      ElMessage.success('文件已保存到您选择的目录');
+    } else {
+      ElMessage.warning('请先通过"浏览文件夹"选择下载路径');
+    }
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      ElMessage.error('保存失败: ' + error.message);
+    }
+  }
+};
+
+
+// 切换录制状态
+// 替换原有的toggleRecordingStatus方法
+const toggleRecordingStatus = async () => {
+  if (!isRecordingEnabled.value) return;
+
+  try {
+    if (isRecording.value) {
+      // 停止录制
+      await api.post('/record', { enable: false });
+      ElMessage.success('录制已停止');
+    } else {
+      // 开始录制
+      const response = await api.post('/record', { enable: true });
+      const rid = response.data.rid;
+
+      // 添加临时记录到列表
       recordings.value.unshift({
-        id: recordings.value.length + 1,
+        id: rid,
         title: `新录制 ${formatDate(new Date())}`,
         date: new Date().toISOString(),
         duration: 0,
-        map: '未知地图',
-        path: '/replays/new_recording.mp4'
+        map: '录制中...',
+        path: `/record/${rid}`
       });
-    }, 1000);
-  } else {
-    ElMessage.info('录制已停止');
+
+      ElMessage.success('开始录制游戏回放');
+    }
+
+    isRecording.value = !isRecording.value;
+    // 刷新录制列表
+    await fetchRecordings();
+  } catch (error) {
+    ElMessage.error('操作录制失败: ' + error.message);
+  }
+};
+
+// 添加录制状态轮询
+const checkRecordingStatus = async () => {
+  try {
+    const response = await api.get('/status');
+    isRecording.value = response.data;
+  } catch (error) {
+    console.error('获取录制状态失败:', error);
   }
 };
 
 // 播放回放
 const playRecording = (recording) => {
-  currentRecording.value = recording;
+  currentRecording.value = {
+    ...recording,
+    downloadPath: `${recording.path}?download=true`
+  };
   playerVisible.value = true;
 };
 
@@ -366,6 +434,19 @@ const playRecording = (recording) => {
 const openFolder = (recording) => {
   ElMessage.info(`打开文件夹: ${recording.path}`);
   // 实际应用中会调用系统API打开文件管理器
+  try {
+    // 尝试通过后端打开文件夹
+    api.post(`/open-folder`)
+        .then(() => ElMessage.success('打开文件夹请求已发送'))
+        .catch(() => ElMessage.warning('无法打开文件夹'));
+  } catch (e) {
+    // 显示文件路径让用户手动打开
+    ElMessageBox.alert(
+        `文件路径: ${recording.path}\n\n请手动在文件资源管理器中打开此路径`,
+        '文件位置',
+        { confirmButtonText: '确定' }
+    );
+  }
 };
 
 // 删除回放
@@ -392,9 +473,32 @@ const toggleFullscreen = () => {
   isFullscreen.value = !isFullscreen.value;
 };
 
-onMounted(() => {
+// 添加获取录制列表的方法
+const fetchRecordings = async () => {
+  try {
+    const response = await api.get('/records');
+    recordings.value = response.data.map(rec => ({
+      id: rec.rid,
+      title: rec.title,
+      date: `${rec.date}T${rec.time}`,
+      duration: rec.duration_seconds / 60, // 秒转分钟
+      map: '录制地图', // 可根据实际游戏数据调整
+      path: `/record/${rec.rid}`
+    }));
+  } catch (error) {
+    ElMessage.error('获取录制列表失败: ' + error.message);
+  }
+};
+
+onMounted(async () => {
+  if (!('showSaveFilePicker' in window)) {
+    ElMessage.warning('您的浏览器不支持文件路径选择功能');
+  }
   // 初始化当前路径
   storagePath.value = currentPath.value;
+  await checkRecordingStatus();
+  // setInterval(checkRecordingStatus, 5000); // 每5秒检查一次状态
+  await fetchRecordings();
 });
 </script>
 

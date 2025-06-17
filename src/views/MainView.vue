@@ -18,7 +18,12 @@
         <div class="user-info">
           <h3>玩家: {{ username }}</h3>
           <p>最后登录: {{ lastLogin }}</p>
-        </div>
+<!--        </div>-->
+        <!-- 添加退出登录按钮 -->
+        <button class="logout-btn" @click="logout">
+          <i class="fas fa-sign-out-alt"></i> 退出登录
+        </button>
+      </div>
         <div class="user-avatar">
           {{ avatarInitials }}
         </div>
@@ -32,25 +37,25 @@
     </div>
 
     <div class="features-grid">
-      <div class="feature-card" @click="navigateTo(username + '/autoaim')">
+      <div class="feature-card" @click="navigateTo('/gamestart')">
         <div class="feature-icon">🔫</div>
-        <h3>自动瞄准</h3>
-        <p>辅助自动瞄准敌人并开火</p>
+        <h3>开始游戏</h3>
+        <p>一个简易的FPS游戏</p>
       </div>
 
-      <div class="feature-card" @click="navigateTo(username + '/searchroad')">
+      <div class="feature-card" @click="navigateTo('/gamesupport')">
         <div class="feature-icon">🗺️</div>
-        <h3>智能寻路</h3>
-        <p>根据地图或视觉信息自动探路</p>
+        <h3>游戏辅助</h3>
+        <p>包含自动锁敌与自动寻路</p>
       </div>
 
-      <div class="feature-card" @click="navigateTo(username + '/data')">
+      <div class="feature-card" @click="navigateTo('/data')">
         <div class="feature-icon">📊</div>
         <h3>数据分析</h3>
         <p>游戏表现数据可视化</p>
       </div>
 
-      <div class="feature-card" @click="navigateTo(username + '/history')">
+      <div class="feature-card" @click="navigateTo('/history')">
         <div class="feature-icon">🏋️</div>
         <h3>历史回放</h3>
         <p>可查看录制的历史回放</p>
@@ -59,7 +64,7 @@
 
     <!-- 页脚 -->
     <div class="footer">
-      <p>© 2023 FPS游戏智能系统 | 版本 2.1.5 | 数据更新于 {{ lastUpdate }}</p>
+      <p>© 2025 FPS游戏智能系统 | 数据更新于 {{ lastUpdate }}</p>
     </div>
   </div>
 </template>
@@ -71,8 +76,9 @@ import { useRouter, useRoute } from 'vue-router';
 export default {
   setup() {
     const router = useRouter();
-    const lastLogin = ref('2025-06-01 21:45');
-    const lastUpdate = ref('2025-06-01 09:30');
+    const storedLoginTime = sessionStorage.getItem('loginTime');
+    const lastLogin = ref(storedLoginTime || '从未登录');
+    const lastUpdate = ref('2025-06-16');
     const avatarInitials = ref('GP');
     const route = useRoute();
     const username = ref(route.params.username || '');
@@ -85,7 +91,19 @@ export default {
       const userPath = `/${currentUser}${path}`;
 
       // 使用 router.push 导航到新路径
-      router.push(userPath);
+      router.replace(userPath);
+    }
+
+    // 添加退出登录功能
+    const logout = () => {
+      // 清除所有用户会话数据
+      sessionStorage.clear();
+
+      // 强制页面重定向到登录页
+      window.location.replace('/login');
+
+      // 防止任何后续代码执行
+      return false;
     }
 
     return {
@@ -93,6 +111,7 @@ export default {
       lastLogin,
       lastUpdate,
       avatarInitials,
+      logout,
       navigateTo
     };
   }
@@ -105,6 +124,17 @@ export default {
   padding: 0;
   box-sizing: border-box;
   font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+}
+
+/* 全屏背景 */
+body, html {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow-x: hidden;
+  background-size: cover;
+  background: radial-gradient(circle at 20% 30%, rgba(30, 30, 50, 0.8) 0%, rgba(10, 10, 20, 0.9) 100%);
 }
 
 .main-container {
@@ -310,6 +340,41 @@ export default {
   bottom: 15%;
   right: 5%;
   transform: rotate(15deg);
+}
+
+/* 添加退出按钮样式 */
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(200, 60, 60, 0.2);
+  border: 1px solid rgba(255, 100, 100, 0.4);
+  color: #ff9090;
+  border-radius: 6px;
+  font-size: 14px;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background: rgba(220, 80, 80, 0.3);
+  border-color: #ff7070;
+  color: #ffb0b0;
+  transform: translateY(-2px);
+}
+
+/* 用户头像添加悬停效果 */
+.user-avatar {
+  /* 原有样式保持不变 */
+  transition: transform 0.3s ease;
+  cursor: pointer;
+}
+
+.user-avatar:hover {
+  transform: scale(1.05);
+  box-shadow: 0 0 15px rgba(100, 150, 255, 0.5);
 }
 
 /* 响应式设计 */

@@ -5,8 +5,8 @@
       <div class="logo-area">
         <div class="crosshair"></div>
         <div class="logo-text">
-          <h1>自动瞄准系统</h1>
-          <p>智能辅助 · 精准锁定 · 竞技提升</p>
+          <h1>游戏启动系统</h1>
+          <p>单机FPS · 爽快游玩 · 竞技提升</p>
         </div>
       </div>
 <!--      <div class="user-area">-->
@@ -24,15 +24,15 @@
     <div class="control-center">
       <div class="status-card">
         <div class="status-indicator" :class="{ 'active': isAutoAimEnabled }"></div>
-        <h3>自动瞄准状态</h3>
+        <h3>游戏状态</h3>
         <p>{{ isAutoAimEnabled ? '已启用' : '已禁用' }}</p>
       </div>
 
       <div class="switch-container">
         <el-switch
             v-model="isAutoAimEnabled"
-            active-text="开启自动瞄准"
-            inactive-text="关闭自动瞄准"
+            active-text="开启游戏"
+            inactive-text="关闭游戏"
             :active-value="true"
             :inactive-value="false"
             @change="toggleAutoAim"
@@ -42,57 +42,17 @@
         >
         </el-switch>
       </div>
-
-<!--      <div class="settings-panel">-->
-<!--        <h3>瞄准设置</h3>-->
-<!--        <div class="slider-group">-->
-<!--          <div class="slider-item">-->
-<!--            <label>瞄准灵敏度</label>-->
-<!--            <el-slider v-model="sensitivity" :min="1" :max="10" :step="1" show-stops />-->
-<!--            <span>{{ sensitivity }}/10</span>-->
-<!--          </div>-->
-<!--          <div class="slider-item">-->
-<!--            <label>目标锁定强度</label>-->
-<!--            <el-slider v-model="lockStrength" :min="1" :max="10" :step="1" show-stops />-->
-<!--            <span>{{ lockStrength }}/10</span>-->
-<!--          </div>-->
-<!--        </div>-->
-
-<!--        <div class="toggle-group">-->
-<!--          <el-checkbox v-model="headshotPriority" label="优先瞄准头部" border />-->
-<!--          <el-checkbox v-model="autoFire" label="自动开火" border />-->
-<!--          <el-checkbox v-model="targetTracking" label="目标追踪" border />-->
-<!--        </div>-->
-<!--      </div>-->
-
-<!--      <div class="stats-panel">-->
-<!--        <div class="stat-card">-->
-<!--          <div class="stat-icon">🎯</div>-->
-<!--          <h4>命中率提升</h4>-->
-<!--          <p>+42%</p>-->
-<!--        </div>-->
-<!--        <div class="stat-card">-->
-<!--          <div class="stat-icon">⚡</div>-->
-<!--          <h4>反应时间</h4>-->
-<!--          <p>0.12s</p>-->
-<!--        </div>-->
-<!--        <div class="stat-card">-->
-<!--          <div class="stat-icon">🏆</div>-->
-<!--          <h4>胜率提升</h4>-->
-<!--          <p>+27%</p>-->
-<!--        </div>-->
-<!--      </div>-->
     </div>
 
     <!-- 页脚 -->
     <div class="footer">
-      <p>© 2023 FPS游戏智能系统 | 自动瞄准模块 v1.2.3</p>
+      <p>© 2025 FPS游戏智能系统 | 游戏启动模块</p>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import {ref, onMounted, onUnmounted} from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import axios from 'axios';
@@ -107,42 +67,89 @@ const username = ref(route.params.username || '未知用户');
 const isAutoAimEnabled = ref(false);
 const autoAimStatus = ref('未激活');
 
-// 瞄准设置
-const sensitivity = ref(6);
-const lockStrength = ref(7);
-const headshotPriority = ref(true);
-const autoFire = ref(false);
-const targetTracking = ref(true);
+const statusPollingTimer = ref(null);
+const POLLING_INTERVAL = 3000; // 3秒轮询一次
 
-// 切换自动瞄准状态
-const toggleAutoAim = async (isEnabled) => {
+// 轮询游戏状态的方法
+const pollGameStatus = async () => {
+  try {
+    const response = await axios.get('http://127.0.0.1:5000/api/game/status');
+    const isRunning = response.data.running;
+
+    // 重要：仅在后端状态变化且与前端不一致时更新
+    if (!isRunning && isAutoAimEnabled.value) {
+      console.log("检测到游戏已关闭，更新前端状态");
+      isAutoAimEnabled.value = false;
+      autoAimStatus.value = '已停用';
+    }
+  } catch (error) {
+    console.error('轮询游戏状态失败:', error);
+    // 可选：添加失败处理逻辑
+  }
+};
+
+// 启动轮询
+const startPolling = () => {
+  // 清除现有定时器避免重复
+  if (statusPollingTimer.value) clearInterval(statusPollingTimer.value);
+
+  statusPollingTimer.value = setInterval(() => {
+    pollGameStatus();
+  }, POLLING_INTERVAL);
+};
+
+// 停止轮询
+const stopPolling = () => {
+  if (statusPollingTimer.value) {
+    clearInterval(statusPollingTimer.value);
+    statusPollingTimer.value = null;
+  }
+};
+
+// 切换游戏状态
+const toggleAutoAim = async (newState) => {
+  console.log("切换前 newState:", typeof newState);
+
   try {
     // 向后端发送开启/关闭指令
-    const response = await axios.post('http://127.0.0.1:5000/api/auto-aim/username=${username.value}', {
+    const response = await axios.post('http://127.0.0.1:5000/api/game/toggle', {
       username: username.value,
-      enabled: isEnabled,
-      // sensitivity: sensitivity.value,
-      // lockStrength: lockStrength.value,
-      // headshotPriority: headshotPriority.value,
-      // autoFire: autoFire.value,
-      // targetTracking: targetTracking.value
+      enable: newState,  // 使用用户选择的新状态
     });
 
     if (response.data.success) {
-      autoAimStatus.value = isEnabled ? '运行中' : '已停用';
+      // 更新本地状态为请求的新状态
+      isAutoAimEnabled.value = newState;
+
+      // 更新状态文本
+      autoAimStatus.value = newState ? '运行中' : '已停用';
+
+      // 显示正确的消息
       ElMessage.success({
-        message: `自动瞄准已${isEnabled ? '开启' : '关闭'}`,
+        message: `自动瞄准已${newState ? '开启' : '关闭'}`,
         duration: 1500
       });
+
+      console.log("切换成功，新状态:", newState);
     } else {
-      // 如果请求失败，恢复之前的状态
-      isAutoAimEnabled.value = !isEnabled;
+      // 请求失败时恢复之前的状态
+      isAutoAimEnabled.value = !newState;
       ElMessage.error(`操作失败: ${response.data.message}`);
+      console.log("切换失败，恢复状态:", !newState);
     }
   } catch (error) {
     console.error('自动瞄准控制请求失败:', error);
-    isAutoAimEnabled.value = !isEnabled;
-    ElMessage.error('服务器连接失败，请稍后重试');
+
+    // 恢复之前的状态
+    isAutoAimEnabled.value = !newState;
+
+    // 显示错误信息
+    if (error.response) {
+      console.error("错误详情:", error.response.data);
+      ElMessage.error(`服务器错误: ${error.response.status} - ${error.response.data.detail || '未处理的错误'}`);
+    } else {
+      ElMessage.error('网络连接失败，请检查网络设置');
+    }
   }
 };
 
@@ -155,17 +162,26 @@ const goToMain = () => {
 onMounted(async () => {
   try {
     // 从后端获取当前状态
-    const response = await axios.get(`http://127.0.0.1:5000/api/auto-aim/status?username=${username.value}`);
+    const response = await axios.get(`http://127.0.0.1:5000/api/game/status`, {
+      params: {
+        username: username.value // 替换为实际的用户名
+      }
+    });
     if (response.data.success) {
       isAutoAimEnabled.value = response.data.enabled;
       autoAimStatus.value = response.data.enabled ? '运行中' : '已停用';
-      // sensitivity.value = response.data.sensitivity || 6;
-      // lockStrength.value = response.data.lockStrength || 7;
     }
   } catch (error) {
     console.error('获取自动瞄准状态失败:', error);
     ElMessage.warning('无法获取当前状态，使用默认设置');
   }
+  finally {
+    startPolling(); // 确保无论如何都启动轮询
+  }
+});
+
+onUnmounted(() => {
+  stopPolling();
 });
 </script>
 

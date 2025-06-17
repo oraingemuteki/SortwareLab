@@ -67,12 +67,12 @@
             </el-input>
           </el-form-item>
 
-          <el-form-item label="登录身份" class="role-selector">
-            <el-radio-group v-model="radio">
-              <el-radio :value="3" size="large" border>管理员</el-radio>
-              <el-radio :value="6" size="large" border>玩家</el-radio>
-            </el-radio-group>
-          </el-form-item>
+<!--          <el-form-item label="登录身份" class="role-selector">-->
+<!--            <el-radio-group v-model="radio">-->
+<!--              <el-radio :value="3" size="large" border>管理员</el-radio>-->
+<!--              <el-radio :value="6" size="large" border>玩家</el-radio>-->
+<!--            </el-radio-group>-->
+<!--          </el-form-item>-->
 
           <el-button
               type="primary"
@@ -87,8 +87,8 @@
         <div class="login-footer">
           <div class="quick-links">
             <a href="#" @click.prevent="currentTab = 'register'">注册新账号</a>
-            <a href="#">忘记密码?</a>
-            <a href="#">联系管理员</a>
+<!--            <a href="#">忘记密码?</a>-->
+<!--            <a href="#">联系管理员</a>-->
           </div>
           <div class="stats-info">
             <div class="stat-item">
@@ -175,8 +175,8 @@
         <div class="register-footer">
           <div class="quick-links">
             <a href="#" @click.prevent="currentTab = 'login'">已有账号? 登录</a>
-            <a href="#">忘记密码?</a>
-            <a href="#">联系管理员</a>
+<!--            <a href="#">忘记密码?</a>-->
+<!--            <a href="#">联系管理员</a>-->
           </div>
         </div>
       </div>
@@ -254,13 +254,17 @@ function handleLogin() {
         offset: 70
       });
 
+      // 在登录成功的处理逻辑中添加（通常在handleLogin方法中）
+      const loginTime = new Date();
+      // 格式化为"YYYY-MM-DD HH:mm"的字符串
+      const formattedTime = `${loginTime.getFullYear()}-${(loginTime.getMonth()+1).toString().padStart(2, '0')}-
+      ${loginTime.getDate().toString().padStart(2, '0')} ${loginTime.getHours().toString().padStart(2, '0')}:${loginTime.getMinutes().toString().padStart(2, '0')}`;
+      // 存入sessionStorage
+      sessionStorage.setItem('loginTime', formattedTime);
+
       // 路由跳转
       setTimeout(() => {
-        if (radio.value == 3) {
-          router.push(`/${username.value}/main`);
-        } else {
-          router.push(`/${username.value}/main`);
-        }
+        router.push(`/${username.value}/main`);
       }, 800);
     } else {
       ElMessage.error('登录失败：' + (res.data.message || '用户名或密码错误'));
@@ -274,15 +278,9 @@ function handleLogin() {
     isLoading.value = false;
   }
 
-  if (radio.value == 3) {
-    axios.post("http://127.0.0.1:5000/api/login/admin", data)
+  axios.post("http://127.0.0.1:5000/api/login/login", data)
         .then(handleSuccess)
         .catch(handleError);
-  } else if (radio.value == 6) {
-    axios.post(`http://127.0.0.1:5000/api/login/user`, data)
-        .then(handleSuccess)
-        .catch(handleError);
-  }
 }
 
 // 注册处理
@@ -299,12 +297,6 @@ function handleRegister() {
   }
 
   isRegistering.value = true;
-
-  let data = {
-    username: registerUsername.value,
-    password: registerPassword.value,
-    role: registerRole.value
-  }
 
   const handleSuccess = (res: any) => {
     if (res.data.code == 200) {
@@ -336,7 +328,10 @@ function handleRegister() {
   }
 
   // 发送注册请求
-  axios.post("http://127.0.0.1:5000/api/register", data)
+  axios.post("http://127.0.0.1:5000/api/login/register", {
+    username: registerUsername.value,
+    password: registerPassword.value,
+  })
       .then(handleSuccess)
       .catch(handleError);
 }

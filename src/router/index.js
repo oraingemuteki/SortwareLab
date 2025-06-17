@@ -21,15 +21,15 @@ const router = createRouter({
             props: true // 允许将路由参数作为 props 传递
         },
         {
-            path: '/:username/autoaim',
-            name: 'AutoAimView',
-            component: () => import('../views/AutoAimView.vue'),
+            path: '/:username/gamestart',
+            name: 'GameStart',
+            component: () => import('../views/GameStartView.vue'),
             props: true
         },
         {
-            path: '/:username/searchroad',
-            name: 'SearchRoadView',
-            component: () => import('../views/SearchRoadView.vue'),
+            path: '/:username/gamesupport',
+            name: 'GameSupportView',
+            component: () => import('../views/GameSupportView.vue'),
             props: true
         },
         {

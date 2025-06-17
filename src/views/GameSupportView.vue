@@ -5,22 +5,20 @@
       <div class="logo-area">
         <div class="logo-icon">🗺️</div>
         <div class="logo-text">
-          <h1>智能寻路系统</h1>
-          <p>智能路径规划 · 动态避障 · 效率优化</p>
+          <h1>游戏辅助系统</h1>
+          <p>智能路径规划 · 自动瞄准 · 效率优化</p>
         </div>
       </div>
-<!--      <div class="user-area">-->
-<!--        <div class="user-info">-->
-<!--          <h3>玩家: {{ username }}</h3>-->
-<!--          <p>当前状态: {{ navigationStatus }}</p>-->
-<!--        </div>-->
-<!--        <div class="user-avatar">-->
-<!--          {{ avatarInitials }}-->
-<!--        </div>-->
-<!--      </div>-->
-      <el-button class="back-button" type="primary" circle @click="goToMain">
-        <el-icon><ArrowLeft /></el-icon>
-      </el-button>
+
+      <div class="user-controls">
+        <div class="user-info">
+          <h3>玩家: {{ username }}</h3>
+          <p>当前状态: {{ navigationStatus }}</p>
+        </div>
+        <el-button class="back-button" type="primary" circle @click="goToMain">
+          <el-icon><ArrowLeft /></el-icon>
+        </el-button>
+      </div>
     </div>
 
     <!-- 主内容区 -->
@@ -45,11 +43,11 @@
               :key="index"
               class="obstacle"
               :style="{
-              width: obstacle.width + 'px',
-              height: obstacle.height + 'px',
-              top: obstacle.top + 'px',
-              left: obstacle.left + 'px'
-            }"
+                width: obstacle.width + 'px',
+                height: obstacle.height + 'px',
+                top: obstacle.top + 'px',
+                left: obstacle.left + 'px'
+              }"
           ></div>
         </div>
       </div>
@@ -57,24 +55,37 @@
       <!-- 控制面板 -->
       <div class="control-panel">
         <div class="panel-title">
-          ⚙️ 寻路控制中心
+          ⚙️ 游戏辅助控制中心
         </div>
 
         <div class="status-card">
           <div class="status-indicator" :class="{ 'active': isNavigationEnabled }"></div>
-          <h3>自动寻路状态</h3>
+          <h3>游戏辅助状态</h3>
           <p>{{ isNavigationEnabled ? '运行中' : '已停用' }}</p>
         </div>
 
         <div class="switch-container">
           <label class="toggle-switch">
-            <input type="checkbox" v-model="isNavigationEnabled" @change="toggleNavigation">
+            <input type="checkbox" v-model="isNavigationEnabled" @change="toggleNavigation(isNavigationEnabled)">
             <span class="slider"></span>
           </label>
           <div class="switch-label">
-            {{ isNavigationEnabled ? '自动寻路已开启' : '自动寻路已关闭' }}
-            <span>{{ isNavigationEnabled ? '系统正在规划路径中' : '点击开关启用自动寻路' }}</span>
+            {{ isNavigationEnabled ? '游戏辅助已开启' : '游戏辅助已关闭' }}
+<!--            <span>{{ isNavigationEnabled ? '系统正在规划路径中' : '点击开关启用自动寻路' }}</span>-->
           </div>
+        </div>
+
+        <!-- 添加自动开启游戏选项 -->
+        <div class="auto-start-container">
+          <el-checkbox
+              v-model="autoStartGame"
+              label="是否自动开启游戏"
+              border
+              class="auto-start-checkbox"
+              @change="saveAutoStartPreference"
+          >
+            自动开启游戏
+          </el-checkbox>
         </div>
 
         <div class="settings-panel">
@@ -91,130 +102,259 @@
             </select>
           </div>
 
-          <div class="setting-item">
-            <label class="setting-label">寻路速度</label>
-            <input type="range" min="1" max="10" v-model="navigationSpeed" class="setting-control">
-            <div class="slider-value">
-              速度: {{ navigationSpeed }}/10
-            </div>
-          </div>
+<!--          <div class="setting-item">-->
+<!--            <label class="setting-label">寻路速度</label>-->
+<!--            <input type="range" min="1" max="10" v-model="navigationSpeed" class="setting-control">-->
+<!--            <div class="slider-value">-->
+<!--              速度: {{ navigationSpeed }}/10-->
+<!--            </div>-->
+<!--          </div>-->
 
-          <div class="setting-item">
-            <label class="setting-label">避障灵敏度</label>
-            <input type="range" min="1" max="10" v-model="obstacleSensitivity" class="setting-control">
-            <div class="slider-value">
-              灵敏度: {{ obstacleSensitivity }}/10
-            </div>
-          </div>
-        </div>
+<!--          <div class="setting-item">-->
+<!--            <label class="setting-label">避障灵敏度</label>-->
+<!--            <input type="range" min="1" max="10" v-model="obstacleSensitivity" class="setting-control">-->
+<!--            <div class="slider-value">-->
+<!--              灵敏度: {{ obstacleSensitivity }}/10-->
+<!--            </div>-->
+<!--          </div>-->
+<!--        </div>-->
 
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-icon">⚡</div>
-            <h4>平均寻路时间</h4>
-            <p>{{ isNavigationEnabled ? '0.8s' : '--' }}</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">📊</div>
-            <h4>避障成功率</h4>
-            <p>{{ isNavigationEnabled ? '98.7%' : '--' }}</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🔄</div>
-            <h4>路径优化率</h4>
-            <p>{{ isNavigationEnabled ? '+42%' : '--' }}</p>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">🏃</div>
-            <h4>移动效率提升</h4>
-            <p>{{ isNavigationEnabled ? '+35%' : '--' }}</p>
-          </div>
+<!--        <div class="stats-grid">-->
+<!--          <div class="stat-card">-->
+<!--            <div class="stat-icon">⚡</div>-->
+<!--            <h4>平均寻路时间</h4>-->
+<!--            <p>{{ isNavigationEnabled ? '0.8s' : '&#45;&#45;' }}</p>-->
+<!--          </div>-->
+<!--          <div class="stat-card">-->
+<!--            <div class="stat-icon">📊</div>-->
+<!--            <h4>避障成功率</h4>-->
+<!--            <p>{{ isNavigationEnabled ? '98.7%' : '&#45;&#45;' }}</p>-->
+<!--          </div>-->
+<!--          <div class="stat-card">-->
+<!--            <div class="stat-icon">🔄</div>-->
+<!--            <h4>路径优化率</h4>-->
+<!--            <p>{{ isNavigationEnabled ? '+42%' : '&#45;&#45;' }}</p>-->
+<!--          </div>-->
+<!--          <div class="stat-card">-->
+<!--            <div class="stat-icon">🏃</div>-->
+<!--            <h4>移动效率提升</h4>-->
+<!--            <p>{{ isNavigationEnabled ? '+35%' : '&#45;&#45;' }}</p>-->
+<!--          </div>-->
         </div>
       </div>
     </div>
 
     <!-- 页脚 -->
     <div class="footer">
-      <p>© 2023 FPS游戏智能系统 | 智能寻路模块 v1.5.2 | 最后更新: {{ lastUpdate }}</p>
+      <p>© 2025 FPS游戏智能系统 | 智能寻路模块 | 最后更新: {{ lastUpdate }}</p>
     </div>
   </div>
 </template>
 
-<script>
-import {ArrowLeft} from "@element-plus/icons-vue";
-import {useRoute, useRouter} from "vue-router";
-import {ref} from "vue";
-const router = useRouter();
-const route = useRoute();
-const username = ref(route.params.username || '游戏玩家');
-export default {
-  name: 'PathfindingView',
-  components: {ArrowLeft},
-  data() {
+<script setup>
+import {ref, computed, onMounted, onUnmounted} from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from "@element-plus/icons-vue";
+import axios from "axios";
+import {ElMessage} from "element-plus";
+
+// 获取路由信息
+const route = useRoute()
+const router = useRouter()
+
+// 响应式数据
+const username = ref(route.params.username || '游戏玩家')
+const isNavigationEnabled = ref(false)
+const navigationStatus = ref("未激活")
+const pathStrategy = ref("balanced")
+const selectedMap = ref("desert")
+const lastUpdate = ref("2025-06-16")
+
+// 添加自动开启游戏的响应式变量
+const autoStartGame = ref(true);
+
+const statusPollingTimer = ref(null);
+const POLLING_INTERVAL = 3000; // 3秒轮询一次
+
+const maps = ref([
+  { id: "default", name: "默认地图" }
+])
+
+const obstacles = ref([
+  { width: 120, height: 80, top: 100, left: 250 },
+  { width: 100, height: 180, top: 220, left: 450 },
+  { width: 180, height: 60, top: 300, left: 150 }
+])
+
+// 计算属性
+const pathStyle = computed(() => {
+  if (!isNavigationEnabled.value) {
     return {
-      username: "GamePlayer123",
-      avatarInitials: "GP",
-      isNavigationEnabled: false,
-      navigationStatus: "未激活",
-      pathStrategy: "balanced",
-      navigationSpeed: 7,
-      obstacleSensitivity: 8,
-      selectedMap: "desert",
-      maps: [
-        { id: "desert", name: "沙漠地图" },
-        { id: "city", name: "城市地图" },
-        { id: "jungle", name: "丛林地图" },
-        { id: "snow", name: "雪地地图" }
-      ],
-      obstacles: [
-        { width: 120, height: 80, top: 100, left: 250 },
-        { width: 100, height: 180, top: 220, left: 450 },
-        { width: 180, height: 60, top: 300, left: 150 }
-      ],
-      lastUpdate: "2025-06-14"
+      display: 'none'
     };
-  },
-  computed: {
-    pathStyle() {
-      if (!this.isNavigationEnabled) {
-        return {
-          display: 'none'
-        };
+  }
+
+  const startX = 20;
+  const startY = 50;
+  const endX = 80;
+  const endY = 30;
+
+  // 计算路径长度和角度
+  const deltaX = endX - startX;
+  const deltaY = endY - startY;
+  const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+  const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+
+  return {
+    width: `${length}%`,
+    top: `${startY}%`,
+    left: `${startX}%`,
+    transform: `rotate(${angle}deg)`,
+    display: 'block'
+  };
+})
+
+// 轮询游戏状态的方法
+const pollGameStatus = async () => {
+  try {
+    const response = await axios.get('http://127.0.0.1:5000/api/game/status');
+    const isRunning = response.data.running;
+
+    // 只有当辅助功能已启用时才更新状态
+    if (isRunning && isNavigationEnabled.value) {
+      navigationStatus.value = '运行中';
+    } else if (!isRunning && isNavigationEnabled.value) {
+      console.log("检测到游戏已关闭，更新辅助状态");
+      isNavigationEnabled.value = false;
+      navigationStatus.value = '未激活';
+    }
+  } catch (error) {
+    console.error('轮询游戏状态失败:', error);
+  }
+};
+
+// 启动轮询
+const startPolling = () => {
+  // 清除现有定时器避免重复
+  if (statusPollingTimer.value) clearInterval(statusPollingTimer.value);
+
+  statusPollingTimer.value = setInterval(() => {
+    pollGameStatus();
+  }, POLLING_INTERVAL);
+};
+
+// 停止轮询
+const stopPolling = () => {
+  if (statusPollingTimer.value) {
+    clearInterval(statusPollingTimer.value);
+    statusPollingTimer.value = null;
+  }
+};
+
+// 方法
+const goToMain = () => {
+  router.push(`/${username.value}/main`)
+}
+
+// 保存自动开启游戏选项到本地存储
+const saveAutoStartPreference = () => {
+  localStorage.setItem('autoStartGame', autoStartGame.value.toString());
+};
+
+const toggleNavigation = async (newState) => {
+  try {
+    if (newState && autoStartGame.value) {
+      await startGame();
+    }
+
+    const response = await axios.post('http://127.0.0.1:5000/api/gamesupport/toggle', {
+      username: username.value,
+      enable: newState,
+    });
+
+    if (response.data.success) {
+      isNavigationEnabled.value = newState;
+      // 根据新状态更新导航状态
+      navigationStatus.value = newState ? '启动中...' : '已停用';
+
+      // 成功开启后更新状态
+      if (newState) {
+        setTimeout(() => {
+          navigationStatus.value = '运行中';
+        }, 1500);
       }
 
-      const startX = 20;
-      const startY = 50;
-      const endX = 80;
-      const endY = 30;
-
-      // 计算路径长度和角度
-      const deltaX = endX - startX;
-      const deltaY = endY - startY;
-      const length = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-      const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
-
-      return {
-        width: `${length}%`,
-        top: `${startY}%`,
-        left: `${startX}%`,
-        transform: `rotate(${angle}deg)`,
-        display: 'block'
-      };
+      ElMessage.success({
+        message: `路径规划已${newState ? '开启' : '关闭'}`,
+        duration: 1500
+      });
+    } else {
+      isNavigationEnabled.value = !newState;
+      navigationStatus.value = '未激活';
+      ElMessage.error(`操作失败: ${response.data.message}`);
     }
-  },
-  methods: {
-    toggleNavigation() {
-      this.navigationStatus = this.isNavigationEnabled ? "运行中" : "未激活";
+  } catch (error) {
+    console.error('游戏辅助控制请求失败:', error);
+    isNavigationEnabled.value = !newState;
+    navigationStatus.value = '未激活';
 
-      // 这里可以添加API调用逻辑
-      console.log(`自动寻路已${this.isNavigationEnabled ? '开启' : '关闭'}`);
+    if (error.response) {
+      ElMessage.error(`服务器错误: ${error.response.status}`);
+    } else {
+      ElMessage.error('网络连接失败');
     }
   }
 };
 
-const goToMain = () => {
-  router.push(`/${username.value}/main`);
+// 启动游戏的方法
+const startGame = async () => {
+  try {
+    const response = await axios.post('http://127.0.0.1:5000/api/game/toggle', {
+      username: username.value,
+      enable: true,
+    });
+
+    if (!response.data.success) {
+      throw new Error(response.data.message);
+    }
+
+    console.log("游戏已自动启动");
+  } catch (error) {
+    console.error('启动游戏失败:', error);
+    ElMessage.error('自动启动游戏失败: ' + (error.message || '未知错误'));
+    throw error; // 抛出错误，让上层处理
+  }
 };
+
+// 初始化时检查状态
+onMounted(async () => {
+  try {
+    // 加载自动开启游戏选项
+    const savedPreference = localStorage.getItem('autoStartGame');
+    if (savedPreference !== null) {
+      autoStartGame.value = savedPreference === 'true';
+    }
+    // 从后端获取当前状态
+    const response = await axios.get(`http://127.0.0.1:5000/api/gamesupport/status`, {
+      params: {
+        username: username.value // 替换为实际的用户名
+      }
+    });
+    if (response.data.success) {
+      isNavigationEnabled.value = response.data.enabled;
+      navigationStatus.value = response.data.enabled ? '运行中' : '已停用';
+    }
+  } catch (error) {
+    console.error('获取游戏状态失败:', error);
+    ElMessage.warning('无法获取当前状态，使用默认设置');
+  }  finally {
+    startPolling(); // 确保无论如何都启动轮询
+  }
+});
+
+onUnmounted(() => {
+  stopPolling();
+});
 </script>
 
 <style scoped>
@@ -277,10 +417,10 @@ const goToMain = () => {
   margin-top: 4px;
 }
 
-.user-area {
+.user-controls {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px;
 }
 
 .user-info {
@@ -299,16 +439,15 @@ const goToMain = () => {
   margin-top: 3px;
 }
 
-.user-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #4a6fcb, #45aaf2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: bold;
+.back-button {
+  background: rgba(100, 150, 255, 0.2);
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  transition: all 0.3s ease;
+}
+
+.back-button:hover {
+  background: rgba(100, 150, 255, 0.3);
+  transform: translateX(-3px);
 }
 
 /* 主内容区 */
@@ -658,6 +797,20 @@ input:checked + .slider:before {
   margin-top: auto;
 }
 
+.auto-start-container {
+  margin-top: 20px;
+  padding: 15px;
+  background: rgba(20, 25, 45, 0.6);
+  border-radius: 8px;
+  border: 1px solid rgba(100, 150, 255, 0.3);
+}
+
+.auto-start-checkbox {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .header {
@@ -666,9 +819,9 @@ input:checked + .slider:before {
     text-align: center;
   }
 
-  .user-area {
-    justify-content: center;
+  .user-controls {
     width: 100%;
+    justify-content: center;
   }
 
   .user-info {
@@ -677,6 +830,23 @@ input:checked + .slider:before {
 
   .stats-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .switch-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .switch-label {
+    margin-left: 0;
+    text-align: center;
+  }
+
+  .user-controls {
+    flex-direction: column;
+    gap: 15px;
   }
 }
 </style>
